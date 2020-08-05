@@ -1,0 +1,86 @@
+{connection_guess_os = connection.guess_os()}
+
+## do some checks and determine the vendor
+{if connection_guess_os is "ios"}
+ {vendor = "CISCO"}
+{else if connection_guess_os is "one_os"}
+ {vendor = "ONEACCESS"}
+{else if connection_guess_os is "cienasaos"}
+ {vendor = "CIENASAOS"}
+{else}
+ {vendor = connection.guess_os()}
+ {fail "ERROR: UNKNOWN VENDOR TYPE \"$vendor\" FOR $__hostname__"}
+{end}
+
+{connection.autoinit()}
+
+# initialize variables, in case there was an error
+{startofconfig = "! ### START OF CONFIG ###"}
+{endofconfig = "! ### END OF CONFIG ###"}
+
+{showversion = "NO OUTPUT"}
+{host = "$__hostname__"}
+{hostname = "$host"}
+{vendor = ""}
+{ciena = ""}
+{cisco = ""}
+{oneaccess = ""}
+{logtofile = "yes"}
+{logtoscreen = "no"}
+{outputdir = "configs"}
+
+
+## try to find initial data from the system, also verify the vendor - typically for Cisco + OneAccess
+{try}show version {
+  extract /^(.*)/ as showversion
+  extract /.*([Cc]isco).*/ as cisco
+  extract /.*(ONEOS).*/ as oneaccess
+}{end}
+
+## override vendor based on the output of show version
+## in case the wrong OS was detected by exscript
+{ if cisco is "Cisco"
+    vendor = "CISCO"
+  else if oneaccess is "ONEOS"
+    vendor = "ONEACCESS"
+  else if ciena is "saos" or ciena is "SAOS"
+    vendor = "CIENA"
+  end
+}
+
+
+# override host with hostname if it was found in the config
+{
+  if "$hostname" is not ""
+    host = "$hostname"
+  end
+}
+
+
+# find firstseen and lastseen parameters
+{firstseen = privlib.findfirstseen("$outputdir/$host.txt")}
+{lastseen = privlib.get_lastseen()}
+
+## this is the header
+{
+  if startofconfig is not ""
+    append startofconfig to config
+    append "!" to config
+  end
+
+  append "! HOSTNAME: $host" to config
+  append "! VENDOR: $vendor" to config
+  append "! FIRST SEEN: $firstseen" to config
+  append "! LAST SEEN: $lastseen" to config
+
+  privlib.write(config, "$logtofile", "$logtoscreen", "$outputdir/$host.txt", "w")
+
+  if showversion is not "NO OUTPUT"
+      privlib.write(showversion, "$logtofile", "$logtoscreen", "$outputdir/$host.txt", "a", "VERSION")
+  end
+
+  if endofconfig is not ""
+      privlib.write(endofconfig, "$logtofile", "$logtoscreen", "$outputdir/$host.txt", "a")
+  end
+}
+

@@ -1,0 +1,4 @@
+# ACCOUNT-POOL:default.cfg TEMPLATE:test.exscript
+hostname	SERVICEID
+25.0.32.1	VT12345
+ssh://25.0.96.1	VT22222

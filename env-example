@@ -1,0 +1,20 @@
+# environment variables for running the exscript-backup script
+# variables in this file override the script variables
+# See the readme file to see the complete list of variables
+#
+# Rename this file to .env or map it in Docker to .env
+
+# set the default account-pool file - file should exist in the AUTHDIR folder
+#ACCOUNT=mycredentials.cfg
+
+# set the default template - file should exist in the TEMPLATESDIR folder
+#BACKUP_TEMPLATE=default.exscript
+
+# override the default exscript lib file - should exist in the LIBDIR folder
+#EXSCRIPTLIB=mylibrary.py
+
+# override the # of simultaneous connections that exscript can make
+#CONNECTIONS=20
+
+# override the default verbosity level of 0
+#VERBOSE=1
