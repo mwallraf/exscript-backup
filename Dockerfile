@@ -18,6 +18,7 @@ RUN pip install exscript
 
 # Add old SSH encryptions
 RUN echo "KexAlgorithms +diffie-hellman-group1-sha1,diffie-hellman-group14-sha1" >> /etc/ssh/ssh_config
+RUN echo "HostKeyAlgorithms=+ssh-dss" >> /etc/ssh/ssh_config
 
 # Create the network-discovery folder
 RUN mkdir -p ${SCRIPTDIR}
