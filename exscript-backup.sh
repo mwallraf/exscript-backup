@@ -75,7 +75,7 @@ fi
 
 # Default verbosity level
 if [[ -z ${VERBOSE} ]]; then
-  readonly VERBOSE=0
+  VERBOSE=0
 fi
 
 # Default exscript delay parameter: number of login retries
