@@ -53,9 +53,6 @@ readonly ACCOUNT_DEFAULT="$AUTHDIR/default.cfg"
 # default exscript template to use
 readonly BACKUP_TEMPLATE_DEFAULT="$TEMPLATESDIR/default.exscript"
 
-# default script timeout setting - exscript is forced to exit after this timeout (in seconds)
-readonly SCRIPT_TIMEOUT=900
-
 # set variable via command line
 declare SHOWHELP=true
 declare HOST=
@@ -103,6 +100,11 @@ if [[ -z ${ACCOUNT} ]]; then
   ACCOUNT=${ACCOUNT_DEFAULT}
 else
   ACCOUNT="${AUTHDIR}/${ACCOUNT}"
+fi
+
+# Default time after which old processes are killed - in seconds
+if [[ -z ${SCRIPT_TIMEOUT} ]]; then
+  readonly SCRIPT_TIMEOUT=900
 fi
 
 # The default exscript template to use
@@ -229,6 +231,7 @@ OPTIONS:
 COMMANDS:
   backup                  Start the backup script
   archive                 Start the backup archive script
+  purge                   Kill all processes older than SCRIPT_TIMEOUT (default=900 secs)
   help                    Display detailed help
   version                 Print version information.
 
@@ -418,6 +421,21 @@ function backup_single_host() {
 
 
 ##################################
+# Start the purge script - delete
+# old running processes
+##################################
+function start_purge() {
+  old_processes=$(ps axh -O etimes  | awk -v timeout=$SCRIPT_TIMEOUT '/.*\/usr\/bin\/exscript/ { if ($2 >= timeout) print $1 }')
+  all_processes=$(ps axhww -O etimes | awk '/.*\/usr\/bin\/exscript/')
+  if [[ ! -z $old_processes ]]; then 
+    echo "found processes older than $SCRIPT_TIMEOUT - purge:"
+    echo "$all_processes" 
+    kill -9 $old_processes
+  fi
+}
+
+
+##################################
 # Start the archive script
 ##################################
 function start_archive() {
@@ -575,6 +593,9 @@ function main() {
 
     # start the archive script
     archive) start_archive ;;
+
+    # start the purge script
+    purge) start_purge ;;
 
     # Unknown command
     *)  err "Unknown command '$command'"; exit 2; ;;
