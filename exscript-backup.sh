@@ -45,12 +45,16 @@ readonly TEMPLATESDIR="$SCRIPTDIR/etc/templates"
 readonly AUTHDIR="$SCRIPTDIR/etc/auth"
 readonly LIBDIR="$SCRIPTDIR/lib"
 readonly LOGDIR="$SCRIPTDIR/log"
+readonly TEMPDIR="/tmp/.exscript"
 
 # default account credentials file
 readonly ACCOUNT_DEFAULT="$AUTHDIR/default.cfg"
 
 # default exscript template to use
 readonly BACKUP_TEMPLATE_DEFAULT="$TEMPLATESDIR/default.exscript"
+
+# default script timeout setting - exscript is forced to exit after this timeout (in seconds)
+readonly SCRIPT_TIMEOUT=900
 
 # set variable via command line
 declare SHOWHELP=true
@@ -260,7 +264,7 @@ function start_backup() {
   SECONDS=0
 
   rm ${LOGDIR}/*
-  rm /tmp/exscript*
+  rm -rf /tmp/exscript*
   create_dirs  
 
   # if a host is given via command line then execute for this host only
@@ -269,6 +273,8 @@ function start_backup() {
   else
     backup_multiple_hosts
   fi
+
+  rm -rf /tmp/exscript*
 
   echo "--- The script has taken $SECONDS seconds to finish ---"
 }
@@ -290,11 +296,20 @@ function backup_multiple_hosts() {
 
   regex_account="^.*ACCOUNT-POOL:([^ ]+\.cfg)"
   regex_template="^.*TEMPLATE:([^ ]+\.exscript)"
+  regex_filename="([^/]*)$"
   create_temp_file=0
 
   for F in $HOSTSDIR/*.tsv
   do
       echo "* processing hosts file $F (verbose=$VERBOSE) *"
+
+      [[ $F =~ $regex_filename ]]
+      if [ ${BASH_REMATCH[1]} ]; then
+        filename=${BASH_REMATCH[1]}
+      else
+        filename=$F
+      fi
+      tmpdir="${TEMPDIR}/$filename"
 
       ## read the first line and look for "ACCOUNT-POOL:" directive
       firstline=`head -n1 $F`
@@ -325,17 +340,15 @@ function backup_multiple_hosts() {
           TMPFILE=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
           USE_FILE="/tmp/exscript_$TMPFILE"
           tail -n +2 $F > $USE_FILE
-          echo "temp file created: $USE_FILE"
+          #echo "temp file created: $USE_FILE"
       else
           USE_FILE=$F
       fi
 
-      CPEFILE="cpefile"
-      PARTNER="partner"
-    
       LOG_OPTS="--verbose=${VERBOSE} --protocol-verbose=${VERBOSE}"
       CONN_OPTS="--connections=${CONNECTIONS} --retry-login=$RETRY_LOGIN --retry=$RETRY --sleep=$DELAY"
-      CUSTOM_OPTS="-d CPELIST=$CPEFILE -d PARTNER=$PARTNER"
+      #CUSTOM_OPTS="-d CPELIST=$CPEFILE -d PARTNER=$PARTNER"
+      CUSTOM_OPTS=""
       OUTPUT_OPTS="-d outputdir=configs -d logtofile=yes"
     
       if [[ ${VERB0SE} == 0 ]]; then
@@ -344,16 +357,32 @@ function backup_multiple_hosts() {
       else
         OUTPUT_OPTS="$OUTPUT_OPTS -d logtoscreen=yes"
       fi
-    
-      CMD="exscript ${USE_TEMPLATE} $LOG_OPTS $CONN_OPTS $CUSTOM_OPTS $OUTPUT_OPTS --ssh-auto-verify --lib=${EXSCRIPTLIB} --account-pool=${USE_ACCOUNT} --logdir=$LOGDIR --non-interactive --csv-hosts=$USE_FILE"
-    
-      if [[ ${VERB0SE} > 0 ]]; then
-        echo "$CMD"
-      fi
-    
-      RESULT=$($CMD)
 
+      # exscript seems blocked with large files or when hosts are not responding, not sure
+      # so as workaround let's split in multiple files and execute each file seperately
+      mkdir -p "$tmpdir"
+      header=`head -n1 $USE_FILE`
+      tail -n +2 $USE_FILE > "$USE_FILE.tmp"
+      split -l ${CONNECTIONS} ${USE_FILE}.tmp $tmpdir/hostsfile.
+
+
+      for F in $tmpdir/hostsfile.*
+      do
+        # add the header again
+        sed -i -e "1i\\$header" $F
+        CMD="exscript ${USE_TEMPLATE} $LOG_OPTS $CONN_OPTS $CUSTOM_OPTS $OUTPUT_OPTS --ssh-auto-verify --lib=${EXSCRIPTLIB} --account-pool=${USE_ACCOUNT} --logdir=$LOGDIR --non-interactive --csv-hosts=$F"
+
+        if [[ ${VERB0SE} > 0 ]]; then
+          echo "$CMD"
+        fi
+      
+        RESULT=$($CMD)
+
+        #echo "result = $RESULT"
+      done
+    
   done
+
 }
 
 ##################################
@@ -363,13 +392,12 @@ function backup_single_host() {
   backuphost=$1
   echo "* processing $backuphost (verbose=$VERBOSE) *"
 
-  CPEFILE="cpefile"
-  PARTNER="partner"
+  PARTNER=""
 
   LOG_OPTS="--verbose=${VERBOSE} --protocol-verbose=${VERBOSE}"
   # removed --sleep=$DELAY 
   CONN_OPTS="--connections=1 --retry-login=$RETRY_LOGIN --retry=$RETRY"
-  CUSTOM_OPTS="-d CPELIST=$CPEFILE -d PARTNER=$PARTNER"
+  CUSTOM_OPTS="-d PARTNER=$PARTNER"
   OUTPUT_OPTS="-d outputdir=configs -d logtofile=yes"
 
   if [[ ${VERB0SE} == 0 ]]; then
@@ -463,7 +491,8 @@ function create_dirs()
     mkdir -p "$ETCDIR"
     mkdir -p "$TEMPLATESDIR"
     mkdir -p "$AUTHDIR"
-
+    rm -rf "$TEMPDIR"
+    mkdir -p "$TEMPDIR"
 }
 
 

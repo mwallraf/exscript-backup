@@ -8,7 +8,7 @@ ENV TZ ${TZ}
 
 RUN apk update
 
-RUN apk add --no-cache bash busybox-extras openssh-client nmap python3 python3-dev libc-dev py3-pip py3-virtualenv py3-yaml tzdata gcc py3-cffi py3-bcrypt py3-cryptography py3-pynacl py3-netaddr
+RUN apk add --no-cache bash busybox-extras openssh-client nmap python3 python3-dev libc-dev py3-pip py3-virtualenv py3-yaml tzdata gcc py3-cffi py3-bcrypt py3-cryptography py3-pynacl py3-netaddr procps
 
 # create an alias for python
 RUN ln -s /usr/bin/python3 /usr/bin/python
