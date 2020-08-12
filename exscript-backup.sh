@@ -232,6 +232,7 @@ COMMANDS:
   backup                  Start the backup script
   archive                 Start the backup archive script
   purge                   Kill all processes older than SCRIPT_TIMEOUT (default=900 secs)
+  processes               Shows the current exscript processes
   help                    Display detailed help
   version                 Print version information.
 
@@ -436,6 +437,16 @@ function start_purge() {
 
 
 ##################################
+# Start the processes script:
+# shows current exscript processes
+# and their age in secods
+##################################
+function start_processes() {
+  ps axh -O etimes | awk '/.*\/usr\/bin\/exscript/'
+}
+
+
+##################################
 # Start the archive script
 ##################################
 function start_archive() {
@@ -596,6 +607,9 @@ function main() {
 
     # start the purge script
     purge) start_purge ;;
+
+    # start the processes script
+    processes) start_processes ;;
 
     # Unknown command
     *)  err "Unknown command '$command'"; exit 2; ;;
