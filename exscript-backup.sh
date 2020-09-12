@@ -224,7 +224,7 @@ OPTIONS:
   --verbose=[0-5]         Enables verbose logging, default=0
   --template=<template>   Use a different backup template, default=default.exscript
   --account-pool=<file>   Use a different account-pool file, default=default.cfg
-  --                      Denotes the end of the options.  Arguments after this  
+  --                      Denotes the end of the options.  Arguments after this
                           will be handled as parameters even if they start with
                           a '-'.
 
@@ -269,7 +269,7 @@ function start_backup() {
 
   rm ${LOGDIR}/*
   rm -rf /tmp/exscript*
-  create_dirs  
+  create_dirs
 
   # if a host is given via command line then execute for this host only
   if [[ ! -z ${HOST} ]]; then
@@ -289,12 +289,12 @@ function start_backup() {
 # - reads all *.tsv hosts files found in the hosts folder
 # - each hosts file should be a tab delimited file
 # - the first line of each file can contain a variable to override the account-pool file or exscript template
-#   example file: 
+#   example file:
 #        # ACCOUNT-POOL:default.cfg TEMPLATE:test.exscript
 #        hostname  SERVICEID
 #        sdvzw01-56kor-03  VT100588
 #        sdvzw01-02bru-05  VT100628
-# 
+#
 ##################################
 function backup_multiple_hosts() {
 
@@ -354,7 +354,7 @@ function backup_multiple_hosts() {
       #CUSTOM_OPTS="-d CPELIST=$CPEFILE -d PARTNER=$PARTNER"
       CUSTOM_OPTS=""
       OUTPUT_OPTS="-d outputdir=configs -d logtofile=yes"
-    
+
       if [[ ${VERB0SE} == 0 ]]; then
         LOG_OPTS="$LOG_OPTS --delete-logs --overwrite-logs"
         OUTPUT_OPTS="$OUTPUT_OPTS -d logtoscreen=no"
@@ -379,12 +379,12 @@ function backup_multiple_hosts() {
         if [[ ${VERB0SE} > 0 ]]; then
           echo "$CMD"
         fi
-      
+
         RESULT=$($CMD)
 
         #echo "result = $RESULT"
       done
-    
+
   done
 
 }
@@ -396,12 +396,19 @@ function backup_single_host() {
   backuphost=$1
   echo "* processing $backuphost (verbose=$VERBOSE) *"
 
-  PARTNER=""
+  # following parameters are required with some templates
+  PARTNER="NOTSET"
+  OS="NOTSET"
+  SERVICE="NOTSET"
+  MULTISERVICE="NOTSET"
+  TEMPLATE="$BACKUP_TEMPLATE"
+  FUNCTION="NOTSET"
+  PROTOCOL="NOTSET"
 
   LOG_OPTS="--verbose=${VERBOSE} --protocol-verbose=${VERBOSE}"
-  # removed --sleep=$DELAY 
+  # removed --sleep=$DELAY
   CONN_OPTS="--connections=1 --retry-login=$RETRY_LOGIN --retry=$RETRY"
-  CUSTOM_OPTS="-d PARTNER=$PARTNER"
+  CUSTOM_OPTS="-d PARTNER=$PARTNER -d OS=$OS -d SERVICE=$SERVICE -d MULTISERVICE=$MULTISERVICE -d TEMPLATE=$TEMPLATE -d FUNCTION=$FUNCTION -d PROTOCOL=$PROTOCOL"
   OUTPUT_OPTS="-d outputdir=configs -d logtofile=yes"
 
   if [[ ${VERB0SE} == 0 ]]; then
@@ -428,9 +435,9 @@ function backup_single_host() {
 function start_purge() {
   old_processes=$(ps axh -O etimes  | awk -v timeout=$SCRIPT_TIMEOUT '/.*\/usr\/bin\/exscript/ { if ($2 >= timeout) print $1 }')
   all_processes=$(ps axhww -O etimes | awk '/.*\/usr\/bin\/exscript/')
-  if [[ ! -z $old_processes ]]; then 
+  if [[ ! -z $old_processes ]]; then
     echo "found processes older than $SCRIPT_TIMEOUT - purge:"
-    echo "$all_processes" 
+    echo "$all_processes"
     kill -9 $old_processes
   fi
 }
@@ -456,22 +463,22 @@ function start_archive() {
   # Storage folder where to move backup files
   # Must contain backup.monthly backup.weekly backup.daily folders
   INCOMINGDIR=$ARCHIVEDIR/incoming
-  
+
   mkdir -p $INCOMINGDIR
-  
+
   # TAR + gzip the config folder to the archive folder
   tar cf - $CONFIGDIR | gzip -9 > $INCOMINGDIR/$ARCHIVE_TARGZFILE
-    
+
   # Destination file names
   date_daily=`date +"${ARCHIVE_DATEFORMAT}"`
-  
+
   # Get current month and week day number
   month_day=`date +"%d"`
   week_day=`date +"%u"`
-    
+
   # It is logical to run this script daily. We take files from source folder and move them to
   # appropriate destination folder
-  
+
   # On first month day do (monthly backups)
   if [ "$month_day" -eq 1 ] ; then
     destination=$ARCHIVEDIR/backup.monthly/$date_daily
@@ -484,20 +491,20 @@ function start_archive() {
       destination=$ARCHIVEDIR/backup.daily/$date_daily
     fi
   fi
-  
+
   # Move the files
   mkdir -p $destination
   mv -v $INCOMINGDIR/* $destination
-  
+
   # daily - keep for 14 days
   find $ARCHIVEDIR/$ARCHIVE_DAILY_FOLDER/ -maxdepth 1 -mtime +$ARCHIVE_DAILY_HISTORY -type d -exec rm -rv {} \;
-  
+
   # weekly - keep for 60 days
   find $ARCHIVEDIR/$ARCHIVE_WEEKLY_FOLDER/ -maxdepth 1 -mtime +$ARCHIVE_WEEKLY_HISTORY -type d -exec rm -rv {} \;
-  
+
   # monthly - keep for 900 days
   find $ARCHIVEDIR/$ARCHIVE_MONTHLY_FOLDER/ -maxdepth 1 -mtime +$ARCHIVE_MONTHLY_HISTORY -type d -exec rm -rv {} \;
-  
+
   rm -rf $INCOMINGDIR
 
   echo "--- The script has taken $SECONDS seconds to finish ---"

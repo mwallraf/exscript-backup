@@ -31,4 +31,6 @@ ADD functions/entrypoint.sh /entrypoint.sh
 RUN chmod -R 755 /entrypoint.sh
 RUN chmod -R 755 ${SCRIPTDIR}/exscript-backup.sh
 
+WORKDIR ${SCRIPTDIR}
+
 ENTRYPOINT /entrypoint.sh
