@@ -267,7 +267,7 @@ function start_backup() {
   echo "--- Start the backup script with template: $BACKUP_TEMPLATE ---"
   SECONDS=0
 
-  rm ${LOGDIR}/*
+  rm -rf ${LOGDIR}/*
   rm -rf /tmp/exscript*
   create_dirs
 
